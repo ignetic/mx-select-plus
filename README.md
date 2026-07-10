@@ -1,6 +1,8 @@
 # MX Select Plus
 This add-on makes long, unwieldy select boxes much more user-friendly with Chosen plugin. It is also opens the option to the user to add new items into the list "on the fly". You can setup to save new options on field level (to be available for choosing in all entrees) or just once. Support Matrix-like fields, Low Variables, SafeCracker. And you can also populate list with custom SQL queries.
 
+> **Maintained fork.** Originally by Max Lazar (MIT). This copy is maintained by Simon Andersohn with PHP 8 compatibility fixes and bug fixes. It keeps the `mx_select_plus` fieldtype handle so existing fields continue to work. See LICENSE for attribution.
+
 ![MX Select Plus Icon](resources/img/mx-select-plus.png)
 ![MX Select Plus](resources/img/select-plus.png)
 

@@ -23,11 +23,11 @@ return [
     'settings_exist' => false,
     // Advanced settings
     'services' => [],
-	
-	'fieldtypes' => array(
-		'mx_select_plus' => array(
-			//'name' => MX_SELECT_NAME,
-			'compatibility' => 'list'
-		)
-	),
+
+    'fieldtypes' => array(
+        'mx_select_plus' => array(
+            //'name' => MX_SELECT_NAME,
+            'compatibility' => 'list'
+        )
+    ),
 ];
