@@ -398,6 +398,8 @@ if (is_array($option)) {
 
         ee()->load->helper('custom_field');
 
+        // Legacy data was newline-delimited; normalise to pipe before decoding.
+        $data = (is_array($data) || is_null($data)) ? $data : str_replace("\n", "|", $data);
         $data = decode_multi_field($data);
 
         // dp we need to sort?
@@ -860,7 +862,10 @@ if (is_array($option)) {
         $data = $this->save_options($data); 
 
         if (!empty($data)) {
-            $data = ( is_array($data) ) ? implode('|', $data) : $data;
+            ee()->load->helper('custom_field');
+            // encode_multi_field escapes literal pipes, matching how native
+            // list fieldtypes (Select/Checkboxes) store multi-values.
+            $data = ( is_array($data) ) ? encode_multi_field($data) : $data;
         } else {
             $data = $data;
         }
