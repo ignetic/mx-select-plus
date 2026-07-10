@@ -24,9 +24,8 @@ class Mx_select_plus_ft extends EE_Fieldtype
         'version'  => MX_SELECT_VERSION );
 
     // Parser Flag (preparse pairs?)
-    var $has_array_data = true;
+    public $has_array_data = true;
 
-    //PHP8.2
     public $col_id;
     public $row_id;
     public $cell_name;
@@ -171,15 +170,15 @@ class Mx_select_plus_ft extends EE_Fieldtype
 
         $this->one_time_options($data["value"]);
 
-// list type compatibility - move from 'options' to 'field_list_items'
-if (isset($this->settings['options'])) {
-    $field_options = ( is_array($this->settings['options']) ) ? array(""=>"") + $this->settings['options'] : array();
-} else {
-    $field_options = ( isset($this->settings['field_list_items']) ) ? preg_split('/\n|\r\n?/', $this->settings['field_list_items']) : array();
-    if ($this->settings['multiselect'] === 'y') {
-        $field_options = array(""=>"") + $field_options;
-    }
-}
+        // List-type compatibility: prefer 'options', else split 'field_list_items'.
+        if (isset($this->settings['options'])) {
+            $field_options = (is_array($this->settings['options'])) ? array("" => "") + $this->settings['options'] : array();
+        } else {
+            $field_options = (isset($this->settings['field_list_items'])) ? preg_split('/\n|\r\n?/', $this->settings['field_list_items']) : array();
+            if ($this->settings['multiselect'] === 'y') {
+                $field_options = array("" => "") + $field_options;
+            }
+        }
         if (self::$grid_bind) {
             $js .= "
             (function($) {
@@ -227,18 +226,17 @@ if (isset($this->settings['options'])) {
         // Get the existing field data - usually happens when fieldtype has been changed
         if (is_array($data['value']) && !empty($data['value']) && $data['allow_new_options'] == 'true') {
             foreach ($data['value'] as $option) {
-//@SY:ADDED - in case it is an array / multilist
-if (is_array($option)) {
-    foreach ($option as $value) {
-        if (!isset($field_options[$value])) {
-            $field_options[$value] = $value;
-            $r .= '<input type="hidden" name="' . $new_field_name .'" value="'.$value.'">';
-        }
-    }
-}
-                elseif (!isset($field_options[$option])) {
+                // A value may itself be an array (multi-value); register each.
+                if (is_array($option)) {
+                    foreach ($option as $value) {
+                        if (!isset($field_options[$value])) {
+                            $field_options[$value] = $value;
+                            $r .= '<input type="hidden" name="' . $new_field_name . '" value="' . $value . '">';
+                        }
+                    }
+                } elseif (!isset($field_options[$option])) {
                     $field_options[$option] = $option;
-                    $r .= '<input type="hidden" name="' . $new_field_name .'" value="'.$option.'">';
+                    $r .= '<input type="hidden" name="' . $new_field_name . '" value="' . $option . '">';
                 }
             }
         }
@@ -402,7 +400,7 @@ if (is_array($option)) {
         $data = (is_array($data) || is_null($data)) ? $data : str_replace("\n", "|", $data);
         $data = decode_multi_field($data);
 
-        // dp we need to sort?
+        // Sort if requested.
         if (isset($params['sort'])) {
             $sort = strtolower($params['sort']);
 
@@ -859,7 +857,7 @@ if (is_array($option)) {
             $data = '';
         }
 
-        $data = $this->save_options($data); 
+        $data = $this->save_options($data);
 
         if (!empty($data)) {
             ee()->load->helper('custom_field');
@@ -899,14 +897,6 @@ if (is_array($option)) {
         if (!is_array($data)) {
             return;
         }
-/*
-        $r = array ();
-        foreach ($data as $k => $v) {
-            $r[] = $v;
-        }
-
-        return $this->save($r);
-*/
 
         return $this->save($data);
     }
@@ -923,7 +913,7 @@ if (is_array($option)) {
         if (!isset($this->field_id)) {
             return $data;
         }
-        
+
         $type = false;
         $col_id = false;
         $field_id = $this->field_id;
@@ -935,13 +925,13 @@ if (is_array($option)) {
             $field_id = $this->field_name;
 
         // GRID
-        } else if (isset($this->settings['grid_field_id'])) {
+        } elseif (isset($this->settings['grid_field_id'])) {
 
             $field_id = $this->settings['grid_field_id'];
             $col_id = $this->field_id;
 
         // MATRIX
-        } else if ($this->settings['field_type'] === 'matrix') {
+        } elseif ($this->settings['field_type'] === 'matrix') {
 
             $field_id = $this->field_id;
             $col_id = $this->settings['col_id'];
@@ -973,30 +963,12 @@ if (is_array($option)) {
         $field_type = 'mx_select_plus';
 
         if (!$type) {
-            /*
-            ee()->load->library('api');
-
-            if ($this->ltEE3) {
-                ee()->api->instantiate('channel_fields');
-            } else {
-                ee()->legacy_api->instantiate('channel_fields');
-            }
-
-            $current_settings = ee()->api_channel_fields->get_settings($field_id);
-            */
-
             $field_query = ee()->db->select('field_type')->from('channel_fields')->where('field_id', $field_id)->get()->row('field_type');
 
             if (!empty($field_query)) {
                 $field_type = $field_query;
             }
 
-            /*if ($this->settings['allow_new_options'] != 'y')
-            {
-                return;
-            }
-            */
-            
             if ($field_type == 'grid') {
 
                 ee()->db->select('col_settings');
@@ -1022,7 +994,7 @@ if (is_array($option)) {
 
                 }
 
-            } else if ($field_type == 'matrix') {
+            } elseif ($field_type == 'matrix') {
 
                 ee()->db->select('col_settings');
                 ee()->db->where('field_id', $field_id);
@@ -1059,20 +1031,15 @@ if (is_array($option)) {
                     if ($field_settings['allow_new_options'] != 'y') {
                         return;
                     }
-/*
-                    foreach ($data as $key => $val) {
-                        $field_settings['options'][$val] = $val;
+                    if (isset($field_settings['options'])) {
+                        $options = array_values($field_settings['options']);
+                        unset($field_settings['options']);
+                    } else {
+                        $options = preg_split('/\n|\r\n?/', $field_settings['field_list_items']);
                     }
-*/
-if (isset($field_settings['options'])) {
-    $options = array_values($field_settings['options']);
-    unset($field_settings['options']);
-} else {
-    $options = preg_split('/\n|\r\n?/', $field_settings['field_list_items']);
-}
 
-$options_list = array_merge($options, $data);
-$field_settings['field_list_items'] = implode("\n", $options_list);
+                    $options_list = array_merge($options, $data);
+                    $field_settings['field_list_items'] = implode("\n", $options_list);
 
                     ee()->db->where('field_id', $field_id);
                     ee()->db->set('field_settings', base64_encode(serialize($field_settings)));
@@ -1081,11 +1048,11 @@ $field_settings['field_list_items'] = implode("\n", $options_list);
 
             }
 
-        } else if ($type == 'var') {
+        } elseif ($type == 'var') {
 
             $variable_id = false;
             $variable_table = false;
-            
+
             if (ee()->db->table_exists('pro_variables')) {
                 $variable_table = 'pro_variables';
             }
@@ -1105,14 +1072,14 @@ $field_settings['field_list_items'] = implode("\n", $options_list);
             if ($variable_id) {
 
                 $var_query = $query = ee()->db->select('variable_settings')->where('variable_id', $variable_id)->get($variable_table);
-                
+
                 if ($var_query->num_rows() > 0) {
 
                     $variable_settings = $var_query->row()->variable_settings;
-                    
+
                     $encoding = 'json';
-                    
-                    // check old serialize encoding 
+
+                    // check old serialize encoding
                     if (substr($variable_settings, 0, 3) == 'YTo') {
                         $variable_settings = str_replace('_', '/', $variable_settings);
                         $variable_settings = @unserialize(base64_decode($variable_settings));
@@ -1124,7 +1091,7 @@ $field_settings['field_list_items'] = implode("\n", $options_list);
                     foreach ($data as $key => $val) {
                         $variable_settings['options'][$val] = $val;
                     }
-                    
+
                     if ($encoding == 'serialize') {
                         ee()->db->set('variable_settings', base64_encode(serialize($variable_settings)));
                     } else {
@@ -1148,15 +1115,7 @@ $field_settings['field_list_items'] = implode("\n", $options_list);
         }
         return true;
     }
-    
-private function array_iunique($array) {
 
-    $lowered = array_map('strtolower', $array);
-
-    return array_intersect_key($array, array_unique($lowered));
-
-}
-    
 }
 
 // END mx_select_plus_ft class
