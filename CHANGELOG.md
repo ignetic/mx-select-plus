@@ -1,5 +1,5 @@
 # Changelog
-* **3.0.1** (unreleased)
+* **3.0.1** (2026-10-06)
   - Fixed: channel fields could start saving an option's list position (0, 1, 2…) instead of its text once a new option had been added from an entry — `update_settings_live()` discarded the text-keyed options and the field was then read as a positional list. Options are now always keyed by their text.
   - Fixed: re-saving an entry no longer appends duplicate options; new options are trimmed and added once.
   - Changed: `field_list_items` (EE's standard list setting) is the single stored option list, read like native Select/Checkboxes; `value_label_pairs` and the legacy `options` array are merged in, so fields switched from native fields or not yet re-saved keep all options. `[[Group]]` and `value : label` lines still work.

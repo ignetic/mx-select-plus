@@ -9,7 +9,7 @@ Channel fields, Matrix/Grid cells, Fluid, Bloqs, and Pro/Low Variables.
 - Keep the `mx_select_plus` **handle** — existing fields depend on it. Do not rename.
 - Remotes: `origin` = ignetic (push here), `upstream` = MaxLazar. `gh` defaults to
   upstream, so always pass `--repo ignetic/mx-select-plus` for releases.
-- Latest release: **v3.0.0** (semver; supersedes the old `mx.select.plus.1.4.0` tag scheme).
+- Latest release: **v3.0.1** (semver; supersedes the old `mx.select.plus.1.4.0` tag scheme).
 
 ## Repo layout & deploy
 - Structure is the **old** EE style: `system/user/mx_select_plus/` (not
