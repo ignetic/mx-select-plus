@@ -168,17 +168,9 @@ class Mx_select_plus_ft extends EE_Fieldtype
             'data-deselect="'.$data['allow_deselect'].'"'
         );
 
-        $this->one_time_options($data["value"]);
-
-        // List-type compatibility: prefer 'options', else split 'field_list_items'.
-        if (isset($this->settings['options'])) {
-            $field_options = (is_array($this->settings['options'])) ? array("" => "") + $this->settings['options'] : array();
-        } else {
-            $field_options = (isset($this->settings['field_list_items'])) ? preg_split('/\n|\r\n?/', $this->settings['field_list_items']) : array();
-            if ($this->settings['multiselect'] === 'y') {
-                $field_options = array("" => "") + $field_options;
-            }
-        }
+        // Options come from field_list_items (EE's standard list setting), keyed by
+        // the option text exactly as native Select/Checkboxes do.
+        $field_options = $this->one_time_options($data["value"], array("" => "") + $this->_get_options($this->settings));
         if (self::$grid_bind) {
             $js .= "
             (function($) {
@@ -260,19 +252,202 @@ class Mx_select_plus_ft extends EE_Fieldtype
      * @param mixed   $values
      * @return void
      */
-    public function one_time_options($values)
+    public function one_time_options($values, $field_options = array())
     {
         if ($this->settings['allow_new_options'] != 'o') {
-            return;
+            return $field_options;
         }
 
-        foreach ($values as $key) {
-            if (!in_array($key, $this->settings['options'])) {
-                $this->settings['options'][$key] = $key;
+        $existing = $this->_flatten_options($field_options);
+
+        foreach ((array) $values as $key) {
+            if (!is_array($key) && $key !== '' && !isset($existing[$key])) {
+                $field_options[$key] = $key;
             }
         }
 
-        return;
+        return $field_options;
+    }
+
+    /**
+     * Parse option list text into a text-keyed array.
+     *
+     * One option per line. MX extras: "[[Group]]" starts an optgroup and
+     * "value : label" gives a different label. Blank lines are skipped.
+     *
+     * @param string $text
+     * @return array
+     */
+    private function _parse_option_lines($text)
+    {
+        $pattern = '#\[\[(.*?)\]\]#s';
+        $current_optgroup = false;
+        $out = array();
+
+        foreach (preg_split('/\n|\r\n?/', (string) $text) as $line) {
+            if (trim($line) === '') {
+                continue;
+            }
+
+            if (preg_match($pattern, $line, $matches)) {
+                $current_optgroup = $matches[1];
+                continue;
+            }
+
+            $value_name = explode(' : ', $line, 2);
+            $value = trim($value_name[0]);
+            $label = isset($value_name[1]) ? trim($value_name[1]) : $value;
+
+            if ($current_optgroup === false) {
+                $out[$value] = $label;
+            } else {
+                $out[$current_optgroup][$value] = $label;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Turn an options array back into option list text (inverse of
+     * _parse_option_lines). Stored raw; form helpers escape on output.
+     *
+     * @param array $options
+     * @return string
+     */
+    private function _options_to_lines($options)
+    {
+        $lines = array();
+        $groups = array();
+
+        // Ungrouped options first: anything after a [[Group]] line belongs to it.
+        foreach ((array) $options as $value => $label) {
+            if (is_array($label)) {
+                $groups[$value] = $label;
+            } else {
+                $lines[] = ((string) $value === (string) $label) ? $value : $value . ' : ' . $label;
+            }
+        }
+
+        foreach ($groups as $group => $items) {
+            $lines[] = '[[' . $group . ']]';
+            foreach ($items as $v => $l) {
+                $lines[] = ((string) $v === (string) $l) ? $v : $v . ' : ' . $l;
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * The field's options as a text-keyed array (optgroups kept).
+     *
+     * field_list_items is the standard source. value_label_pairs (from a native
+     * Select switched to this fieldtype) and the legacy 'options' array are merged
+     * in, so nothing is lost on fields not yet re-saved.
+     *
+     * @param array $settings
+     * @return array
+     */
+    private function _get_options($settings)
+    {
+        $options = array();
+
+        if (!empty($settings['value_label_pairs']) && is_array($settings['value_label_pairs'])) {
+            $options = $settings['value_label_pairs'];
+        }
+
+        if (isset($settings['field_list_items'])) {
+            $options = $this->_merge_options($options, is_array($settings['field_list_items'])
+                ? $settings['field_list_items']
+                : $this->_parse_option_lines($settings['field_list_items']));
+        }
+
+        if (isset($settings['options'])) {
+            $options = $this->_merge_options($options, is_array($settings['options'])
+                ? $settings['options']
+                : $this->_parse_option_lines($settings['options']));
+        }
+
+        return $options;
+    }
+
+    /**
+     * Add options from $extra that aren't already in $options (by value).
+     *
+     * @param array $options
+     * @param array $extra
+     * @return array
+     */
+    private function _merge_options($options, $extra)
+    {
+        $existing = $this->_flatten_options($options);
+
+        foreach ((array) $extra as $value => $label) {
+            if (is_array($label)) {
+                foreach ($label as $v => $l) {
+                    if (!isset($existing[$v])) {
+                        $options[$value][$v] = $l;
+                        $existing[$v] = $l;
+                    }
+                }
+            } elseif (!isset($existing[$value])) {
+                $options[$value] = $label;
+                $existing[$value] = $label;
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * Options as a flat value => label array (optgroups expanded).
+     *
+     * @param array $options
+     * @return array
+     */
+    private function _flatten_options($options)
+    {
+        $flat = array();
+
+        foreach ((array) $options as $value => $label) {
+            if (is_array($label)) {
+                foreach ($label as $v => $l) {
+                    $flat[$v] = $l;
+                }
+            } else {
+                $flat[$value] = $label;
+            }
+        }
+
+        return $flat;
+    }
+
+    /**
+     * Add new option values to a settings array: appended to field_list_items
+     * (once each, trimmed) and the legacy 'options' array folded in and removed.
+     *
+     * @param array $settings
+     * @param array $values
+     * @return array
+     */
+    private function _add_new_options($settings, $values)
+    {
+        $options = $this->_get_options($settings);
+        $existing = $this->_flatten_options($options);
+
+        foreach ((array) $values as $value) {
+            $value = trim((string) $value);
+            if ($value !== '' && !isset($existing[$value])) {
+                $options[$value] = $value;
+                $existing[$value] = $value;
+            }
+        }
+
+        unset($settings['options']);
+        $settings['field_list_items'] = $this->_options_to_lines($options);
+
+        return $settings;
     }
 
     /**
@@ -349,17 +524,7 @@ class Mx_select_plus_ft extends EE_Fieldtype
      */
     function _get_field_options($data, $show_empty = '')
     {
-        if (! is_array($this->settings['options'])) {
-            foreach (explode("\n", trim($this->settings['options'])) as $v) {
-                $v = trim($v);
-
-                $field_options[form_prep($v)] = form_prep($v);
-            }
-        } else {
-            $field_options = $this->settings['options'];
-        }
-
-        return $field_options;
+        return $this->_get_options($this->settings);
     }
 
     /**
@@ -418,13 +583,15 @@ class Mx_select_plus_ft extends EE_Fieldtype
             $data = array_splice($data, $offset, $limit);
         }
 
+        $options = $this->_flatten_options($this->_get_options($this->settings));
+
         if (!isset($params['all_options'])) {
             foreach ($data as $option) {
                 $tagdata_tmp = ee()->TMPL->swap_var_single('option', $option, $tagdata);
                 $tagdata_tmp = ee()->TMPL->swap_var_single('count', $count, $tagdata_tmp);
 
-                if (isset($this->settings['options'][$option])) {
-                    $tagdata_tmp = ee()->TMPL->swap_var_single('option_name', $this->settings['options'][$option], $tagdata_tmp);
+                if (isset($options[$option])) {
+                    $tagdata_tmp = ee()->TMPL->swap_var_single('option_name', $options[$option], $tagdata_tmp);
                 } else {
                     $tagdata_tmp = ee()->TMPL->swap_var_single('option_name', $option, $tagdata_tmp);
                 }
@@ -436,13 +603,13 @@ class Mx_select_plus_ft extends EE_Fieldtype
 
         } else {
 
-            foreach ($this->settings['options'] as $key => $val) {
+            foreach ($options as $key => $val) {
 
                 $selected = ( in_array($key, $data) ) ? 1 : 0;
 
                 $tagdata_tmp = ee()->TMPL->swap_var_single('option', $key, $tagdata);
 
-                $tagdata_tmp = ee()->TMPL->swap_var_single('option_name', $this->settings['options'][$key], $tagdata_tmp);
+                $tagdata_tmp = ee()->TMPL->swap_var_single('option_name', $val, $tagdata_tmp);
 
                 $tagdata_tmp = ee()->TMPL->swap_var_single('selected', $selected, $tagdata_tmp);
 
@@ -574,19 +741,15 @@ class Mx_select_plus_ft extends EE_Fieldtype
                 array( lang('allow_deselect', 'allow_deselect'), form_dropdown($prefix . '[allow_deselect]', array( 'y' => lang('yes'), 'n' => lang('no') ), $this->_data_help($data, 'allow_deselect', 'y')) ),
                 //array( lang( 'source', 'source' ), form_dropdown( $prefix . '[source]', array( 'stadart_list' => lang( 'stadart_list' ), 'db' => lang( 'db' ), 'json' => lang( 'json' ) ), $this->_data_help( $data, 'source', 'stadart_list' ) ) ),
                 array( lang('min_width', 'min_width'), form_input($prefix . '[min_width]', $this->_data_help($data, 'min_width', '300px')) ),
-                array( lang('field_list_items', 'field_list_items'), form_textarea($prefix . '[options]', $this->_options($this->_data_help($data, 'options'))) ),
+                array( lang('field_list_items', 'field_list_items'), form_textarea($prefix . '[options]', $this->_options_to_lines($this->_get_options($data))) ),
 
                 array( lang('db_request', 'db_request'), form_textarea($prefix . '[db_request]', $this->_data_help($data, 'db_request')) )
 
             );
         } else {
 
-            // list type compatibility - move from 'options' to 'field_list_items'
-            if (isset($data['options'])) {
-                $options = $this->_options($this->_data_help($data, 'options'));
-            } else {
-                $options = $this->_data_help($data, 'field_list_items');
-            }
+            // Option list from field_list_items (legacy 'options' merged in)
+            $options = $this->_options_to_lines($this->_get_options($data));
 
             $fields['placeholder'][$prefix.'[placeholder]'] = array(
                 'type' => 'text',
@@ -765,9 +928,6 @@ class Mx_select_plus_ft extends EE_Fieldtype
      */
     function save_settings($data, $type = false)
     {
-        $pattern = '#'.'\[\['.'(.*?)' .'\]\]'.'#s';
-        $current_optgroup = false;
-
         $prefix = MX_SELECT_KEY . '_';
 
         $vars = array();
@@ -781,39 +941,13 @@ class Mx_select_plus_ft extends EE_Fieldtype
 
         if (isset($data[$prefix])) {
 
-            // list type compatibility
-            if (isset($data[$prefix]['options'])) {
-                $vars['field_list_items'] = $data[$prefix]['options'];
-            }
-
             foreach ($data[$prefix] as $key => $val) {
 
+                // The option list is stored once, in EE's standard field_list_items
+                // (as native Select/Checkboxes do), normalised: trimmed, blank lines dropped.
                 if ($key == "options") {
-
-                    $out = array();
-                    foreach (explode("\n", $val) as $option) {
-
-
-                        // check for optgroups
-                        if (is_string($option)
-                          && preg_match($pattern, $option, $matches)
-                        ) {
-                            $optgroup = $matches[1];
-                            $current_optgroup = $optgroup;
-                        } else {
-                            $value_name = explode(" : ", $option, 2);
-
-                            if (!$current_optgroup) {
-                                $out[$value_name[0]] = isset($value_name[1]) ? $value_name[1] : $value_name[0];
-                            } else {
-                                $out[$current_optgroup][$value_name[0]] = isset($value_name[1]) ? $value_name[1] : $value_name[0];
-                            }
-
-                        }
-
-                    }
-                    $val = $out;
-
+                    $vars['field_list_items'] = $this->_options_to_lines($this->_parse_option_lines($val));
+                    continue;
                 }
 
                 $vars[$key] = $val;
@@ -1031,15 +1165,9 @@ class Mx_select_plus_ft extends EE_Fieldtype
                     if ($field_settings['allow_new_options'] != 'y') {
                         return;
                     }
-                    if (isset($field_settings['options'])) {
-                        $options = array_values($field_settings['options']);
-                        unset($field_settings['options']);
-                    } else {
-                        $options = preg_split('/\n|\r\n?/', $field_settings['field_list_items']);
-                    }
-
-                    $options_list = array_merge($options, $data);
-                    $field_settings['field_list_items'] = implode("\n", $options_list);
+                    // Append to field_list_items (text values, no duplicates); the
+                    // legacy 'options' array is folded in and removed.
+                    $field_settings = $this->_add_new_options($field_settings, $data);
 
                     ee()->db->where('field_id', $field_id);
                     ee()->db->set('field_settings', base64_encode(serialize($field_settings)));
