@@ -17,6 +17,9 @@
 		add_new_options = cell_obj.data('no');
 		allow_deselect  = cell_obj.data('deselect');
 
+		var field_name = cell_obj.attr('name');
+		var new_field_name = field_name.slice(0,-2) + '[new_field][]';
+
 		cell.col = cell.col || {};
 		var col_id = cell.data('column-id');
 		if (!cell.col.id) {
@@ -26,7 +29,7 @@
 			cell.col.newCellHtml = cell.html();
 		}
 
-		cell_obj.chosen({group_class: '#'+id, add_new_options: add_new_options , add_new: id, cell_obj: cell, allow_single_deselect: allow_deselect, callback: function() {}});
+		cell_obj.chosen({group_class: '#'+id, add_new_options: add_new_options , add_new: new_field_name, cell_obj: cell, allow_single_deselect: allow_deselect, callback: function() {}});
 	});
 
 })(jQuery);

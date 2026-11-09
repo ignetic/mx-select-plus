@@ -21,6 +21,11 @@ Channel fields, Matrix/Grid cells, Fluid, Bloqs, and Pro/Low Variables.
   the live copy, `diff -q` to confirm parity. The repo had **drifted** from live
   before (~217 lines in `ft.mx_select_plus.php`); it was canonicalised on the live
   PHP-8 version on 2026-07-10. Keep them in sync.
+- **Theme folder too**: the 2026-07-10 canonicalisation missed `themes/`, so
+  releases 3.0.0/3.0.1 shipped JS using the old `new_field[<id>]` naming while
+  the PHP expects `<field>[new_field][]` (add-new-options broken). Synced from
+  live on 2026-11-09. Check parity with
+  `diff -rq -w --strip-trailing-cr` (live theme files are CRLF; repo is LF).
 - Main file: `system/user/mx_select_plus/ft.mx_select_plus.php` (~1120 lines).
 
 ## Data format / backward compat (important)

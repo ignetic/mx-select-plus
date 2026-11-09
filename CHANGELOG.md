@@ -1,4 +1,7 @@
 # Changelog
+* **Unreleased**
+  - Fixed: "allow new options" could silently drop newly typed options on save — the bundled theme JS (`chosen.jquery(.min).js`, `mx_select_grid.js`, `mx_select_matrix.js`) still used the old `new_field[<id>]` hidden-input naming, while the PHP since 3.0.0 expects `<field>[new_field][]`. Theme JS synced from the tested live install.
+  - Fixed: `var` scoping of locals in `mx_select_matrix.js`.
 * **3.0.1** (2026-10-06)
   - Fixed: channel fields could start saving an option's list position (0, 1, 2…) instead of its text once a new option had been added from an entry — `update_settings_live()` discarded the text-keyed options and the field was then read as a positional list. Options are now always keyed by their text.
   - Fixed: re-saving an entry no longer appends duplicate options; new options are trimmed and added once.

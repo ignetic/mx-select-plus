@@ -804,7 +804,8 @@ Copyright (c) 2011 by Harvest
 						this.form_field_jq.val('' + this.result_highlight.html() + '').attr("selected", "selected");
 					}
 					if (this.options.add_new) {
-						this.form_field_jq.after('<input type="hidden" name="new_field[' + this.options.add_new + ((this.options.cell_obj) ? "_" + this.options.cell_obj.col.id : "") + '][]" value="' + this.result_highlight.html() + '" />');
+						//this.form_field_jq.after('<input type="hidden" name="new_field[' + this.options.add_new + ((this.options.cell_obj) ? "_" + this.options.cell_obj.col.id : "") + '][]" value="' + this.result_highlight.html() + '" />');
+						this.form_field_jq.after('<input type="hidden" name="' + this.options.add_new + '" value="' + this.result_highlight.html() + '" />');
 					} //support modification in cell
 					if (this.options.cell_obj) {
 						this.options.cell_obj.col.newCellHtml = this.options.cell_obj.col.newCellHtml.replace('</select>', '<option value="' + this.result_highlight.html() + '">' + this.result_highlight.html() + '</option></select>');
