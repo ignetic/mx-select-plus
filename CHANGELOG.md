@@ -1,5 +1,5 @@
 # Changelog
-* **Unreleased**
+* **3.0.2** (2026-11-09)
   - Fixed: "allow new options" could silently drop newly typed options on save — the bundled theme JS (`chosen.jquery(.min).js`, `mx_select_grid.js`, `mx_select_matrix.js`) still used the old `new_field[<id>]` hidden-input naming, while the PHP since 3.0.0 expects `<field>[new_field][]`. Theme JS synced from the tested live install.
   - Fixed: `var` scoping of locals in `mx_select_matrix.js`.
 * **3.0.1** (2026-10-06)
